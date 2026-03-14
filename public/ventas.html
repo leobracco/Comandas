@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Casa del Molino</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-logo"><span>🌾</span> Molino</div>
+        <a href="/" class="nav-item">🛒 Pedidos (POS)</a>
+        <a href="/ventas.html" class="nav-item active">📊 Dashboard</a>
+        <a href="/admin.html" class="nav-item">⚙️ Configuración</a>
+        <a href="/cocina.html" target="_blank" class="nav-item">🔥 Pantalla Cocina</a>
+        <div class="spacer"></div>
+        <a href="#" onclick="logout()" class="nav-item" style="color: var(--danger)">🚪 Cerrar Sesión</a>
+    </div>
+
+    <div class="main-content">
+        <div class="top-header">
+            <div>
+                <h1>Dashboard</h1>
+                <p>Resumen de ventas y movimientos de hoy</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <input type="date" id="f-inicio">
+                <input type="date" id="f-fin">
+                <button class="btn-primary" onclick="buscarVentas()">Filtrar</button>
+            </div>
+        </div>
+
+        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+            <div class="card">
+                <div class="card-title"><span style="color: var(--text-muted)">Total Ingresos</span></div>
+                <h2 style="font-size: 2.2em; margin: 0; color: var(--primary);" id="dash-total">$0</h2>
+            </div>
+            <div class="card">
+                <div class="card-title"><span style="color: var(--text-muted)">Pedidos Completados</span></div>
+                <h2 style="font-size: 2.2em; margin: 0;" id="dash-cant">0</h2>
+            </div>
+            <div class="card">
+                <div class="card-title"><span style="color: var(--text-muted)">Ticket Promedio</span></div>
+                <h2 style="font-size: 2.2em; margin: 0;" id="dash-promedio">$0</h2>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="card-title">Órdenes Recientes</h3>
+            <table>
+                <thead>
+                    <tr><th>ID Orden</th><th>Hora</th><th>Cliente</th><th>Estado</th><th>Total</th></tr>
+                </thead>
+                <tbody id="tabla-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+	const hora = new Date(p.fecha).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour:'2-digit', minute:'2-digit'});
+        document.getElementById('f-inicio').value = hoy; document.getElementById('f-fin').value = hoy;
+
+        function cargarDashboard() {
+    fetch('/api/reportes/dashboard')
+        .then(res => {
+            // Validación de seguridad: Si pasaron las 8 horas o no hay token, al login.
+            if (res.status === 401) {
+                window.location.href = '/login.html';
+                return null; // Cortamos la ejecución aquí
+            }
+            return res.json();
+        })
+        .then(data => {
+            // Si data es null (porque lo mandamos al login), no hace nada más
+            if (!data) return; 
+
+            const total = parseFloat(data.total_dia) || 0; 
+            const cant = parseInt(data.cantidad_pedidos) || 0;
+            
+            document.getElementById('dash-total').innerText = '$' + total.toLocaleString();
+            document.getElementById('dash-cant').innerText = cant;
+            document.getElementById('dash-promedio').innerText = cant > 0 ? '$' + Math.round(total/cant).toLocaleString() : '$0';
+        })
+        .catch(error => console.error("Error al cargar dashboard:", error));
+}
+	function buscarVentas() {
+    const inicio = document.getElementById('f-inicio').value; 
+    const fin = document.getElementById('f-fin').value;
+    
+    fetch(`/api/reportes/ventas?inicio=${inicio}&fin=${fin}`)
+        .then(res => {
+            // Validación de seguridad: Si la sesión expiró (401), al login.
+            if (res.status === 401) {
+                window.location.href = '/login.html';
+                return null;
+            }
+            return res.json();
+        })
+        .then(pedidos => {
+            // Si pedidos es null (porque lo mandamos al login), cortamos acá
+            if (!pedidos) return;
+
+            const tbody = document.getElementById('tabla-body'); 
+            tbody.innerHTML = '';
+            
+            if(pedidos.length === 0) {
+                return tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: var(--text-muted);">Sin ventas en este periodo.</td></tr>';
+            }
+            
+            pedidos.forEach(p => {
+                const hora = new Date(p.fecha).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                tbody.innerHTML += `<tr>
+                    <td><strong style="color:var(--primary)">#ORD${p.id}</strong></td>
+                    <td>${hora}</td>
+                    <td>${p.cliente || 'Mesa ' + p.mesa}</td>
+                    <td><span class="badge badge-success">Completado</span></td>
+                    <td>$${parseFloat(p.total).toLocaleString()}</td>
+                </tr>`;
+            });
+        })
+        .catch(error => console.error("Error al buscar ventas:", error));
+}    
+        async function logout() { await fetch('/api/logout', {method: 'POST'}); window.location.href = '/login.html'; }
+        cargarDashboard(); buscarVentas();
+    </script>
+</body>
+</html>

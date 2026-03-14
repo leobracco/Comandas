@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Casa del Molino</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+    <style>
+        :root { --beige: #F5F5DC; --madera: #5D4037; --bg-crema: #fdfaf6; }
+        body { background-color: var(--bg-crema); color: var(--madera); font-family: 'Lato', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(93, 64, 55, 0.1); text-align: center; border: 1px solid #e0d1c1; width: 300px; }
+        h1 { font-family: 'Playfair Display', serif; color: var(--madera); margin-bottom: 30px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #e0d1c1; border-radius: 6px; box-sizing: border-box; background: var(--bg-crema); color: var(--madera); }
+        button { width: 100%; padding: 12px; background-color: var(--madera); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background-color: #4a332c; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>Casa del Molino</h1>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Usuario" required>
+            <input type="password" id="password" placeholder="Contraseña" required>
+            <button type="submit">Ingresar</button>
+        </form>
+        <p id="error-msg" style="color: red; font-size: 0.9em; display: none;">Credenciales incorrectas</p>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p })
+            });
+
+            if (res.ok) {
+                window.location.href = '/';
+            } else {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

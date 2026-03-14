@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cocina - Casa del Molino</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #F26A36;
+            --bg-app: #FAF8F5;
+            --surface: #FFFFFF;
+            --text-main: #2D2B2A;
+            --text-muted: #8E8A86;
+            --border: #E8E2DA;
+            --success: #2ED573;
+            --danger: #FF4757;
+            --mesa-bg: #D4A373;
+            --llevar-bg: #8D6E63;
+        }
+
+        body { background-color: var(--bg-app); color: var(--text-main); font-family: 'Nunito', sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+
+        /* --- CABECERA --- */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+        .top-bar h1 { margin: 0; font-size: 1.5rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; }
+        #reloj { font-size: 1.6rem; font-weight: 800; color: var(--primary); }
+
+        /* --- GRILLA RESPONSIVE --- */
+        #seccion-activa { flex: 1; overflow-y: auto; padding-bottom: 10px; }
+        #comandas-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; align-items: start; }
+
+        /* --- TICKETS --- */
+        .ticket { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; transition: transform 0.2s; }
+        
+        .ticket-content { cursor: pointer; transition: background 0.2s; }
+        .ticket-content:hover { background: #fdfdfd; }
+        .ticket-content:active { background: #f0f0f0; }
+
+        .header-mesa { background: var(--mesa-bg); color: white; padding: 8px 12px; }
+        .header-llevar { background: var(--llevar-bg); color: white; padding: 8px 12px; }
+        
+        .ticket-title { font-weight: 800; font-size: 1.1rem; line-height: 1.2; text-transform: uppercase; }
+        .ticket-subtitle { font-size: 0.85rem; opacity: 0.95; margin-top: 2px; }
+        .ticket-meta { font-size: 0.8rem; margin-top: 6px; display: flex; justify-content: space-between; font-weight: 700; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;}
+
+        /* --- ITEMS Y TILDADO --- */
+        .items-container { padding: 8px 12px; flex: 1; }
+        .item-row { padding: 8px 6px; border-bottom: 1px dashed var(--border); font-size: 0.9rem; line-height: 1.25; cursor: pointer; transition: all 0.2s; border-radius: 6px; margin-bottom: 2px;}
+        .item-row:last-child { border-bottom: none; }
+        .item-row:hover { background-color: rgba(0,0,0,0.03); }
+        .item-name { font-weight: 800; display: block; margin-bottom: 2px; color: var(--text-main); transition: 0.2s; }
+        
+        .mod-normal { color: var(--text-muted); font-size: 0.85em; }
+        .mod-sin { color: var(--danger); text-decoration: line-through; font-weight: 700; font-size: 0.85em; }
+        .mod-con { color: var(--success); font-weight: 700; font-size: 0.85em; }
+
+        /* Clase mágica para cuando clickean un ítem */
+        .item-tildado {
+            opacity: 0.5;
+            text-decoration: line-through;
+            background-color: #e6f9ed !important;
+            border: 1px solid #bcead1;
+        }
+
+        .btn-listo { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; font-weight: 800; cursor: pointer; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s; }
+        .btn-listo:hover { filter: brightness(1.1); }
+
+        /* --- MODAL DE DETALLE (COCINA) --- */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; backdrop-filter: blur(2px); }
+        #modal-detalle { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; background: var(--surface); border-radius: 16px; padding: 25px; z-index: 101; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+        
+        .md-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; }
+        .md-title { font-size: 1.8rem; font-weight: 900; margin: 0; line-height: 1; text-transform: uppercase; }
+        .md-subtitle { color: var(--text-muted); font-size: 1.1rem; margin-top: 5px; }
+        .md-close { background: none; border: none; font-size: 2rem; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 0; }
+        
+        .md-items-container { margin-bottom: 20px; }
+        .md-item-row { padding: 12px 10px; border-bottom: 1px solid var(--bg-app); font-size: 1.2rem; cursor: pointer; transition: all 0.2s; border-radius: 8px; }
+        .md-item-row:hover { background-color: rgba(0,0,0,0.02); }
+        .md-item-name { font-weight: 800; color: var(--text-main); display: block; margin-bottom: 5px; }
+        .md-mod { display: block; font-size: 0.9em; margin-left: 10px; margin-bottom: 3px; }
+
+        /* --- HISTORIAL --- */
+        #seccion-historial { height: 170px; background: var(--surface); padding: 12px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 -4px 15px rgba(0,0,0,0.02); overflow-x: auto; white-space: nowrap; margin-top: 15px; }
+        #seccion-historial h3 { margin: 0 0 10px 0; font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        #historial-container { display: flex; gap: 10px; }
+        .ticket-old { width: 160px; opacity: 0.6; display: inline-flex; flex-shrink: 0; filter: grayscale(0.5); }
+        .ticket-old .btn-listo { display: none; }
+        .ticket-old:hover { opacity: 1; transform: translateY(-3px); filter: grayscale(0); }
+
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .top-bar h1 { font-size: 1.2rem; }
+            #reloj { font-size: 1.2rem; }
+            #comandas-container { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+            .ticket-title { font-size: 0.95rem; }
+            .item-row { font-size: 0.8rem; }
+            .btn-listo { padding: 10px; font-size: 0.9rem; }
+            #seccion-historial { height: 150px; padding: 10px; }
+            .ticket-old { width: 140px; }
+            #modal-detalle { width: 95%; padding: 20px; }
+            .md-title { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="top-bar">
+        <h1>🌾 Cocina - El Molino</h1>
+        <div id="reloj">--:--</div>
+    </div>
+
+    <div id="seccion-activa">
+        <div id="comandas-container"></div>
+    </div>
+
+    <div id="seccion-historial">
+        <h3>🕒 Últimos Despachados</h3>
+        <div id="historial-container"></div>
+    </div>
+
+    <div id="modal-overlay" onclick="cerrarModal()"></div>
+    <div id="modal-detalle">
+        <div class="md-header">
+            <div>
+                <h2 class="md-title" id="md-titulo" style="color: var(--primary)">MESA X</h2>
+                <div class="md-subtitle" id="md-cliente">Nombre Cliente</div>
+                <div style="font-weight: 700; color: var(--text-muted); margin-top: 5px; font-size: 0.9rem;">Orden #<span id="md-id"></span> • <span id="md-hora"></span></div>
+            </div>
+            <button class="md-close" onclick="cerrarModal()">&times;</button>
+        </div>
+        
+        <div class="md-items-container" id="md-items">
+            </div>
+
+        <button id="md-btn-listo" class="btn-listo" style="font-size: 1.2rem; padding: 18px; border-radius: 8px;">✅ MARCAR COMO LISTO</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const containerActivo = document.getElementById('comandas-container');
+        const containerHistorial = document.getElementById('historial-container');
+        
+        let pedidosEnMemoria = {}; 
+
+        function iniciar() {
+            fetch('/api/cocina/pendientes').then(r => {
+                if (r.status === 401) return window.location.href = '/login.html';
+                return r.json();
+            }).then(lista => lista.forEach(p => dibujarTicket(p, 'activo')));
+
+            fetch('/api/cocina/historial').then(r => {
+                if (r.status === 401) return window.location.href = '/login.html';
+                return r.json();
+            }).then(lista => lista.forEach(p => dibujarTicket(p, 'historial')));
+        }
+        iniciar();
+
+        function dibujarTicket(pedido, tipo) {
+            const hora = pedido.hora || new Date(pedido.fecha).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute:'2-digit'});
+            if(tipo === 'activo') {
+                // Si el pedido ya existe en memoria, conservamos sus tildes, si no, lo guardamos nuevo
+                if (!pedidosEnMemoria[pedido.id]) {
+                    pedidosEnMemoria[pedido.id] = { ...pedido, hora };
+                }
+            }
+
+            const p_memoria = pedidosEnMemoria[pedido.id] || pedido;
+            const esMesa = p_memoria.mesa && p_memoria.mesa.trim() !== "";
+            const claseHeader = esMesa ? 'header-mesa' : 'header-llevar';
+            const titulo = esMesa ? `MESA ${p_memoria.mesa}` : 'LLEVAR';
+            
+            const itemsHTML = p_memoria.items.map((item, index) => {
+                let detalles = [];
+                if(item.ingredientes_base) {
+                    item.ingredientes_base.forEach(i => { 
+                        if(i.eliminado) detalles.push(`<span class="mod-sin">SIN ${i.nombre}</span>`);
+                        else detalles.push(`<span class="mod-normal">${i.nombre}</span>`);
+                    });
+                }
+                if(item.extras) {
+                    item.extras.forEach(e => detalles.push(`<span class="mod-con">+${e.nombre}</span>`));
+                }
+
+                const claseTildado = item.terminado ? 'item-tildado' : '';
+
+                return `
+                    <div class="item-row ${claseTildado}" id="item-${p_memoria.id}-${index}" onclick="marcarItem(${p_memoria.id}, ${index}, event)">
+                        <span class="item-name">1x ${item.nombre}</span>
+                        <div>${detalles.length > 0 ? detalles.join(' • ') : '<span class="mod-normal">Sin mod.</span>'}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const div = document.createElement('div');
+            div.className = `ticket ${tipo === 'historial' ? 'ticket-old' : ''}`;
+            div.id = `pedido-${p_memoria.id}`;
+
+            div.innerHTML = `
+                <div class="ticket-content" onclick="abrirModal(${p_memoria.id})">
+                    <div class="${claseHeader}">
+                        <div class="ticket-title">${titulo}</div>
+                        <div class="ticket-subtitle">${p_memoria.cliente || 'Sin nombre'} <br> <small style="font-weight:bold">🔍 Ver Detalle</small></div>
+                        <div class="ticket-meta">
+                            <span>#${p_memoria.id}</span> <span>${hora}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="items-container">${itemsHTML}</div>
+                ${tipo === 'activo' ? `<button id="btn-listo-${p_memoria.id}" class="btn-listo" onclick="terminarPedido(${p_memoria.id})">✅ LISTO</button>` : ''}
+            `;
+
+            if (tipo === 'activo') {
+                containerActivo.prepend(div);
+                verificarTicketCompleto(p_memoria.id); // Revisa color del botón al cargarlo
+            } else {
+                // Usamos appendChild para respetar el orden (del más nuevo al más viejo)
+                containerHistorial.appendChild(div);
+                if(containerHistorial.children.length > 10) containerHistorial.lastChild.remove();
+            }
+        }
+
+        socket.on('pedido-cocina', (pedido) => {
+            if(pedido.reload) return location.reload();
+            dibujarTicket(pedido, 'activo');
+        });
+
+        // --- LÓGICA DE TILDAR ÍTEMS ---
+        function marcarItem(pedidoId, itemIndex, event) {
+            // Evita que al hacer clic en el ítem se abra el modal gigante
+            if(event) event.stopPropagation(); 
+            
+            const p = pedidosEnMemoria[pedidoId];
+            if(!p) return;
+            
+            // Invertir el estado "terminado" de ese ítem específico
+            p.items[itemIndex].terminado = !p.items[itemIndex].terminado;
+            
+            // 1. Pintar el ítem en la tarjeta chica
+            const rowChica = document.getElementById(`item-${pedidoId}-${itemIndex}`);
+            if(rowChica) {
+                if(p.items[itemIndex].terminado) rowChica.classList.add('item-tildado');
+                else rowChica.classList.remove('item-tildado');
+            }
+            
+            // 2. Pintar el ítem en el Modal (si estuviera abierto)
+            const rowModal = document.getElementById(`md-item-${pedidoId}-${itemIndex}`);
+            if(rowModal) {
+                if(p.items[itemIndex].terminado) rowModal.classList.add('item-tildado');
+                else rowModal.classList.remove('item-tildado');
+            }
+
+            // 3. Verificar si se completaron todos
+            verificarTicketCompleto(pedidoId);
+        }
+
+        function verificarTicketCompleto(pedidoId) {
+            const p = pedidosEnMemoria[pedidoId];
+            if(!p) return;
+            
+            // Revisamos si TODOS los items tienen terminado = true
+            const todosTerminados = p.items.every(item => item.terminado);
+            
+            const btnChico = document.getElementById(`btn-listo-${pedidoId}`);
+            const btnModal = document.getElementById('md-btn-listo');
+            
+            if(todosTerminados) {
+                if(btnChico) { btnChico.style.background = 'var(--success)'; btnChico.innerHTML = '🚀 DESPACHAR'; }
+                if(btnModal && btnModal.getAttribute('onclick').includes(pedidoId)) {
+                    btnModal.style.background = 'var(--success)';
+                    btnModal.innerHTML = '🚀 DESPACHAR PEDIDO COMPLETO';
+                }
+            } else {
+                if(btnChico) { btnChico.style.background = 'var(--primary)'; btnChico.innerHTML = '✅ LISTO'; }
+                if(btnModal && btnModal.getAttribute('onclick').includes(pedidoId)) {
+                    btnModal.style.background = 'var(--primary)';
+                    btnModal.innerHTML = '✅ MARCAR COMO LISTO';
+                }
+            }
+        }
+
+        // --- LÓGICA DEL MODAL ---
+        function abrirModal(id) {
+            const p = pedidosEnMemoria[id];
+            if(!p) return;
+
+            const esMesa = p.mesa && p.mesa.trim() !== "";
+            document.getElementById('md-titulo').innerText = esMesa ? `MESA ${p.mesa}` : 'PARA LLEVAR';
+            document.getElementById('md-titulo').style.color = esMesa ? 'var(--mesa-bg)' : 'var(--llevar-bg)';
+            document.getElementById('md-cliente').innerText = p.cliente || 'Sin nombre cargado';
+            document.getElementById('md-id').innerText = p.id;
+            document.getElementById('md-hora').innerText = p.hora;
+
+            const itemsHTML = p.items.map((item, index) => {
+                let detalles = [];
+                if(item.ingredientes_base) {
+                    item.ingredientes_base.forEach(i => { 
+                        if(i.eliminado) detalles.push(`<span class="md-mod mod-sin">❌ SIN ${i.nombre}</span>`);
+                        else detalles.push(`<span class="md-mod mod-normal">• ${i.nombre}</span>`);
+                    });
+                }
+                if(item.extras) {
+                    item.extras.forEach(e => detalles.push(`<span class="md-mod mod-con">🟢 EXTRA: +${e.nombre}</span>`));
+                }
+
+                const claseTildado = item.terminado ? 'item-tildado' : '';
+
+                return `
+                    <div class="md-item-row ${claseTildado}" id="md-item-${p.id}-${index}" onclick="marcarItem(${p.id}, ${index}, event)">
+                        <span class="md-item-name">1x ${item.nombre}</span>
+                        ${detalles.length > 0 ? detalles.join('') : '<span class="md-mod mod-normal" style="font-style:italic">Receta original (Sin modificaciones)</span>'}
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('md-items').innerHTML = itemsHTML;
+            document.getElementById('md-btn-listo').setAttribute('onclick', `terminarPedido(${p.id})`);
+            
+            verificarTicketCompleto(p.id); // Asegura que el botón del modal nazca con el color correcto
+
+            document.getElementById('modal-overlay').style.display = 'block';
+            document.getElementById('modal-detalle').style.display = 'block';
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            document.getElementById('modal-detalle').style.display = 'none';
+        }
+
+        // --- LÓGICA DE DESPACHO ---
+        function terminarPedido(id) {
+            fetch(`/api/cocina/terminar/${id}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        const ticket = document.getElementById(`pedido-${id}`);
+                        if(ticket) ticket.remove();
+                        
+                        delete pedidosEnMemoria[id];
+                        cerrarModal();
+
+                        fetch('/api/cocina/historial').then(r => r.json()).then(lista => {
+                            containerHistorial.innerHTML = '';
+                            lista.forEach(p => dibujarTicket(p, 'historial'));
+                        });
+                    }
+                });
+        }
+        
+        setInterval(() => document.getElementById('reloj').innerText = new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute:'2-digit'}), 1000);
+    </script>
+</body>
+</html>

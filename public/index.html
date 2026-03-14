@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pedidos (POS) - Casa del Molino</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    
+    <style>
+        /* ESTILOS ESPECÍFICOS DEL POS Y MODAL */
+        .pos-container { display: flex; gap: 20px; height: calc(100vh - 40px); }
+        .menu-area { flex: 2; overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 20px; }
+        .cart-area { flex: 1; background: var(--surface); border-radius: var(--radius-card); padding: 20px; display: flex; flex-direction: column; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+        
+        /* Zona Entregas */
+        #zona-entregas { display: none; background: #e3fcef; padding: 15px; border-radius: 12px; border: 1px solid var(--success); }
+        .titulo-entrega { color: #009432; font-weight: 800; margin-bottom: 10px; font-size: 1.1em; }
+        .grid-entregas { display: flex; gap: 10px; flex-wrap: wrap; }
+        .card-entrega { background: white; padding: 15px; border-radius: 8px; border-left: 4px solid var(--success); width: 260px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* Grilla Productos */
+        .grid-productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
+        .prod-card { background: var(--surface); padding: 20px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; transition: 0.2s; text-align: center; }
+        .prod-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow-sm); }
+        .prod-price { color: var(--primary); font-weight: 800; font-size: 1.2em; margin-top: 10px;}
+
+        /* Elementos del Carrito */
+        .cart-item { background: var(--bg-app); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border); }
+        .cart-item-header { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 5px; }
+        .detalles-item { font-size: 0.85em; color: var(--text-muted); }
+        .sin-ing { color: var(--danger); text-decoration: line-through; margin-right: 5px; }
+        .con-ing { color: var(--success); margin-right: 5px; }
+        .btn-remove-item { color: var(--danger); cursor: pointer; font-size: 0.9em; font-weight: bold; }
+
+        /* Modal Editor (Adaptado al estilo moderno) */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; backdrop-filter: blur(3px); }
+        #editor-producto { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; background: var(--surface); border-radius: var(--radius-card); padding: 30px; z-index: 101; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .section-title { font-size: 0.85em; text-transform: uppercase; color: var(--text-muted); margin: 20px 0 10px 0; font-weight: 800; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); padding-bottom: 5px;}
+        .ingrediente-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--bg-app); }
+        .tachado { text-decoration: line-through; color: #ccc; }
+        .btn-action { padding: 6px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85em; }
+        .btn-quitar { background: #ffebeb; color: var(--danger); }
+        .btn-restaurar { background: #e6f9ed; color: var(--success); }
+        .btn-add-extra { background: var(--bg-app); color: var(--primary); width: 100%; padding: 12px; margin-top: 10px; border: 1px dashed var(--primary); }
+        
+        .inputs-header { display: flex; gap: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-logo"><span>🌾</span> Molino</div>
+        <a href="/" class="nav-item active">🛒 Pedidos (POS)</a>
+        <a href="/ventas.html" class="nav-item">📊 Dashboard</a>
+        <a href="/admin.html" class="nav-item">⚙️ Configuración</a>
+        <a href="/cocina.html" target="_blank" class="nav-item">🔥 Pantalla Cocina</a>
+        <div class="spacer"></div>
+        <a href="#" onclick="logout()" class="nav-item" style="color: var(--danger)">🚪 Cerrar Sesión</a>
+    </div>
+
+    <div class="main-content">
+        <div class="pos-container">
+            
+            <div class="menu-area">
+                
+                <div id="zona-entregas">
+                    <div class="titulo-entrega">🚀 LISTO PARA ENTREGAR (Verificar Cobro)</div>
+                    <div id="lista-entregas" class="grid-entregas"></div>
+                </div>
+
+                <div class="card">
+                    <div class="inputs-header">
+                        <div style="flex: 0.3;">
+                            <label style="font-size: 0.85em; font-weight: bold; color: var(--text-muted);">Mesa</label>
+                            <input type="text" id="mesa" placeholder="N°">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.85em; font-weight: bold; color: var(--text-muted);">Cliente</label>
+                            <input type="text" id="cliente" placeholder="Nombre del cliente">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="margin-top: 0; color: var(--text-main);">Menú</h3>
+                    <div id="lista-productos" class="grid-productos">Cargando menú...</div>
+                </div>
+            </div>
+
+            <div class="cart-area">
+                <h3 style="margin-top:0; border-bottom: 2px solid var(--border); padding-bottom: 10px;">Comanda Actual</h3>
+                
+                <div id="lista-pedido" style="flex:1; overflow-y:auto; padding-right: 5px;">
+                    <div style="text-align:center; color: var(--text-muted); margin-top: 50px;">Comanda vacía</div>
+                </div>
+                
+                <div style="border-top: 2px solid var(--border); padding-top: 15px; margin-top: 10px;">
+                    <div style="display:flex; justify-content:space-between; font-size: 1.5em; font-weight: 800; margin-bottom: 15px;">
+                        <span>Total</span> <span style="color: var(--primary)">$<span id="total-general">0</span></span>
+                    </div>
+                    <button class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1em;" onclick="enviarPedido()">ENVIAR PEDIDO 🚀</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="modal-overlay" onclick="cerrarEditor()"></div>
+    <div id="editor-producto">
+        <h2 id="ep-nombre" style="margin: 0 0 5px 0;">Producto</h2>
+        <div style="color: var(--text-muted); font-size: 0.9em; font-weight: 600;">Precio Base: $<span id="ep-precio-base">0</span></div>
+        
+        <div class="section-title">Ingredientes Base (Quitar)</div>
+        <div id="ep-lista-base"></div>
+        
+        <div class="section-title">Agregados (Suman Precio)</div>
+        <div style="display: flex; gap: 5px;">
+            <select id="select-extras"></select>
+        </div>
+        <button class="btn-action btn-add-extra" onclick="agregarExtra()">+ Agregar Extra</button>
+        <div id="ep-lista-extras"></div>
+        
+        <h3 style="text-align: right; border-top: 2px solid var(--border); margin-top: 20px; padding-top: 15px;">
+            Subtotal Item: <span style="color: var(--primary)">$<span id="ep-subtotal">0</span></span>
+        </h3>
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn-primary" style="flex: 1; background: var(--border); color: var(--text-main);" onclick="cerrarEditor()">CANCELAR</button>
+            <button class="btn-primary" style="flex: 1;" onclick="confirmarItem()">CONFIRMAR</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/pos.js"></script> </body>
+</html>
