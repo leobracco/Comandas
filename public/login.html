@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#F26A36">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
     <title>Login - Casa del Molino</title>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
@@ -43,6 +48,15 @@
                 document.getElementById('error-msg').style.display = 'block';
             }
         });
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA Lista!'))
+                    .catch(err => console.log('PWA Error:', err));
+            });
+        }
     </script>
 </body>
 </html>

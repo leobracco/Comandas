@@ -1,62 +1,141 @@
 const socket = io();
-let menu = [];
+
+// --- ESTADO GLOBAL ---
+let menuGlobal = [];
+let menuFiltrado = [];
 let insumosGlobales = [];
+let mesasGlobales = [];
 let itemEditando = null;
 let pedidoActual = [];
+
+// --- PAGINACIÓN ---
+let pagPOS = 1;
+const ITEMS_POR_PAGINA_POS = 6; 
 
 // ==========================================
 //        CARGA INICIAL DE DATOS
 // ==========================================
 async function cargarDatos() {
     try {
-        const [resMenu, resInsumos] = await Promise.all([fetch('/api/menu'), fetch('/api/insumos')]);
+        const [resMenu, resInsumos, resMesas] = await Promise.all([
+            fetch('/api/menu'), 
+            fetch('/api/insumos'),
+            fetch('/api/mesas')
+        ]);
         
-        // Si cualquiera de las dos responde 401 (No autorizado), la sesión caducó
-        if(resMenu.status === 401 || resInsumos.status === 401) {
+        if(resMenu.status === 401 || resInsumos.status === 401 || resMesas.status === 401) {
             alert("Tu sesión ha expirado. Por favor, vuelve a ingresar.");
             return window.location.href = '/login.html'; 
         }
 
-        menu = await resMenu.json();
+        menuGlobal = await resMenu.json();
         insumosGlobales = await resInsumos.json();
+        mesasGlobales = await resMesas.json();
         
-        renderMenu();
+        // AQUÍ EL CAMBIO: Inicializamos filtrando los agotados
+        menuFiltrado = menuGlobal.filter(p => !p.agotado);
+        
+        renderMenuPOS();
         renderSelectExtras();
+        renderSelectMesas(); 
+        cargarCuentasActivas(); 
     } catch (e) { 
         console.error("Error cargando datos:", e); 
     }
 }
-function renderMenu() {
-    document.getElementById('lista-productos').innerHTML = menu.map((prod, index) => `
-        <div class="prod-card" onclick="abrirEditor(${index})">
-            <div style="font-weight: 700; font-size: 1.1em; color: var(--text-main); line-height: 1.2;">${prod.nombre}</div>
-            <div class="prod-price">$${prod.precio}</div>
-        </div>
-    `).join('');
+
+// ==========================================
+//        RENDERIZADO DE SELECTS
+// ==========================================
+function renderSelectMesas() {
+    const select = document.getElementById('mesa');
+    if (select) {
+        select.innerHTML = '<option value="">Mostrador / Para llevar</option>' + 
+            mesasGlobales.map(m => `<option value="${m.nombre}">${m.nombre}</option>`).join('');
+    }
 }
 
 function renderSelectExtras() {
-    // AHORA SOLO MOSTRAMOS LOS QUE TIENEN "es_extra === 1"
     const extrasPermitidos = insumosGlobales.filter(i => i.es_extra === 1);
+    const select = document.getElementById('select-extras');
+    if (select) {
+        select.innerHTML = extrasPermitidos.map(i => 
+            `<option value="${i.id}" data-costo="${i.costo}">${i.nombre}</option>`
+        ).join('');
+    }
+}
+
+// ==========================================
+//        BÚSQUEDA Y PAGINACIÓN DEL MENÚ
+// ==========================================
+function filtrarMenuPOS() {
+    const txt = document.getElementById('buscador-pos').value.toLowerCase();
     
-    document.getElementById('select-extras').innerHTML = extrasPermitidos.map(i => 
-        `<option value="${i.id}" data-costo="${i.costo}">${i.nombre}</option>`
-    ).join('');
+    // AQUÍ EL CAMBIO: Filtramos por texto Y que NO esté agotado
+    menuFiltrado = menuGlobal.filter(p => 
+        p.nombre.toLowerCase().includes(txt) && !p.agotado
+    );
+    
+    pagPOS = 1; 
+    renderMenuPOS();
+}
+
+function cambiarPaginaPOS(delta) {
+    pagPOS += delta;
+    renderMenuPOS();
+}
+
+function renderMenuPOS() {
+    const totalPaginas = Math.ceil(menuFiltrado.length / ITEMS_POR_PAGINA_POS) || 1;
+    const inicio = (pagPOS - 1) * ITEMS_POR_PAGINA_POS;
+    const fin = inicio + ITEMS_POR_PAGINA_POS;
+    const recortes = menuFiltrado.slice(inicio, fin);
+
+    const container = document.getElementById('lista-productos');
+
+    if (recortes.length === 0) {
+        container.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 20px; color: var(--text-muted);">No se encontraron productos.</div>`;
+    } else {
+        container.innerHTML = recortes.map(prod => {
+            // LÓGICA DE PRECIO FIJO
+            const precioMostrar = (prod.precio_venta && prod.precio_venta > 0) ? prod.precio_venta : prod.precio;
+            
+            // Ya no necesitamos lógica visual de agotado aquí, porque el filtro anterior evita que lleguen a este punto.
+            return `
+            <div class="prod-card" onclick="abrirEditor('${prod.id}')">
+                <div style="font-weight: 800; font-size: 1.05em; color: var(--text-main); line-height: 1.2;">${prod.nombre}</div>
+                <div class="prod-price">$${precioMostrar}</div>
+            </div>
+            `;
+        }).join('');
+    }
+
+    // Controles de paginación
+    const pageInfo = document.getElementById('page-info-pos');
+    const btnPrev = document.getElementById('btn-prev-pos');
+    const btnNext = document.getElementById('btn-next-pos');
+    
+    if(pageInfo) pageInfo.innerText = `${pagPOS}/${totalPaginas}`;
+    if(btnPrev) btnPrev.disabled = pagPOS === 1;
+    if(btnNext) btnNext.disabled = pagPOS === totalPaginas;
 }
 
 // ==========================================
 //        MODAL DE EDICIÓN DE PRODUCTO
 // ==========================================
-function abrirEditor(index) {
-    const prod = menu[index];
-    // Clonamos el producto para no alterar el menú original
+function abrirEditor(idProducto) {
+    const prod = menuGlobal.find(p => p.id === idProducto);
+    if (!prod) return;
+    
+    const precioCalculado = (prod.precio_venta && prod.precio_venta > 0) ? prod.precio_venta : prod.precio;
+
     itemEditando = {
         id_producto: prod.id,
         nombre: prod.nombre,
         markup: prod.markup,
         es_cocina: prod.es_cocina,
-        precio_base: prod.precio,
-        precio_final: prod.precio,
+        precio_base: precioCalculado,
+        precio_final: precioCalculado,
         ingredientes_base: JSON.parse(JSON.stringify(prod.ingredientes)),
         extras: []
     };
@@ -71,7 +150,6 @@ function abrirEditor(index) {
 }
 
 function renderEditorInterno() {
-    // Render ingredientes base
     document.getElementById('ep-lista-base').innerHTML = itemEditando.ingredientes_base.map((ing, idx) => `
         <div class="ingrediente-row ${ing.eliminado ? 'tachado' : ''}">
             <span>${ing.nombre}</span>
@@ -85,7 +163,6 @@ function renderEditorInterno() {
         </div>
     `).join('');
     
-    // Render extras (se mantiene igual)
     document.getElementById('ep-lista-extras').innerHTML = itemEditando.extras.map((ext, idx) => `
         <div class="ingrediente-row">
             <span>+ ${ext.nombre} ($${ext.precio})</span>
@@ -93,7 +170,11 @@ function renderEditorInterno() {
         </div>
     `).join('');
     
-    document.getElementById('ep-subtotal').innerText = itemEditando.precio_final;
+    const spanTotal = document.getElementById('ep-subtotal');
+    if (spanTotal) spanTotal.innerText = itemEditando.precio_final;
+
+    const inputPrecio = document.getElementById('ep-subtotal-input');
+    if (inputPrecio) inputPrecio.value = itemEditando.precio_final;
 }
 
 function toggleIngredienteBase(idx) {
@@ -109,13 +190,20 @@ function agregarExtra() {
     const nombre = select.options[select.selectedIndex].text;
     const costo = parseFloat(select.options[select.selectedIndex].dataset.costo);
     
-    // Calcula el precio de venta del extra usando el markup del producto
     const precioCalculado = (costo / (100 - itemEditando.markup)) * 100;
     const precioFinalExtra = Math.ceil(precioCalculado);
     
     itemEditando.extras.push({ id, nombre, precio: precioFinalExtra });
     recalcularTotalItem();
     renderEditorInterno();
+}
+
+function actualizarPrecioManual(valor) {
+    const nuevoPrecio = parseFloat(valor);
+    if (!isNaN(nuevoPrecio)) {
+        itemEditando.precio_final = Math.ceil(nuevoPrecio);
+        renderEditorInterno();
+    }
 }
 
 function removerExtra(idx) {
@@ -155,7 +243,6 @@ function renderPedidoActual() {
     container.innerHTML = pedidoActual.map((p, index) => {
         let htmlDetalles = [];
         
-        // 1. Mostrar TODOS los ingredientes base
         if (p.ingredientes_base) {
             p.ingredientes_base.forEach(i => { 
                 if(i.eliminado) {
@@ -166,7 +253,6 @@ function renderPedidoActual() {
             });
         }
         
-        // 2. Mostrar los extras
         if (p.extras) {
             p.extras.forEach(e => { 
                 htmlDetalles.push(`<span class="con-ing">+ ${e.nombre}</span>`); 
@@ -205,7 +291,7 @@ function enviarPedido() {
     const mesa = document.getElementById('mesa').value.trim();
     const cliente = document.getElementById('cliente').value.trim();
     
-    if (!mesa && !cliente) { alert("⚠️ Ingresa Mesa o Cliente para identificar el pedido."); return; }
+    if (!mesa && !cliente) { alert("⚠️ Ingresa Cliente para pedidos de mostrador, o selecciona una Mesa."); return; }
     if (pedidoActual.length === 0) { alert("⚠️ Comanda vacía."); return; }
     
     const payload = { 
@@ -217,12 +303,18 @@ function enviarPedido() {
     
     socket.emit('nuevo-pedido', payload);
     
-    // Resetear formulario
     pedidoActual = [];
     document.getElementById('mesa').value = "";
     document.getElementById('cliente').value = "";
+    
+    const buscador = document.getElementById('buscador-pos');
+    if(buscador) buscador.value = "";
+    filtrarMenuPOS(); 
+    
     renderPedidoActual();
     actualizarTotalGeneral();
+
+    if(mesa) setTimeout(cargarCuentasActivas, 500);
 }
 
 // ==========================================
@@ -237,14 +329,13 @@ socket.on('pedido-listo-para-entregar', (pedido) => {
 function agregarTarjetaEntrega(pedido) {
     const zona = document.getElementById('zona-entregas');
     const contenedor = document.getElementById('lista-entregas');
-    zona.style.display = 'block';
+    if (zona) zona.style.display = 'block';
 
     let itemsHTML = '';
     if (pedido.items && pedido.items.length > 0) {
         itemsHTML = pedido.items.map(item => {
             let mods = [];
             
-            // Listar todos los ingredientes base en la tarjeta
             if(item.ingredientes_base) {
                 item.ingredientes_base.forEach(i => { 
                     if(i.eliminado) {
@@ -255,7 +346,6 @@ function agregarTarjetaEntrega(pedido) {
                 });
             }
             
-            // Listar extras
             if(item.extras) {
                 item.extras.forEach(e => mods.push(`<strong style="color:var(--success)">+${e.nombre}</strong>`));
             }
@@ -283,11 +373,12 @@ function agregarTarjetaEntrega(pedido) {
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <strong style="font-size:1.2em;">$${pedido.total}</strong>
-            <button class="btn-primary" style="background:var(--success); padding: 8px 12px; font-size: 0.9em;" onclick="confirmarEntrega(${pedido.id})">✅ ENTREGADO</button>
+            <button class="btn-primary" style="background:var(--success); padding: 8px 12px; font-size: 0.9em;" onclick="confirmarEntrega('${pedido.id}')">✅ ENTREGADO</button>
         </div>
     `;
     contenedor.appendChild(div);
 }
+
 function confirmarEntrega(id) {
     fetch(`/api/pedido/entregar/${id}`, { method: 'POST' })
         .then(res => res.json())
@@ -300,10 +391,75 @@ function confirmarEntrega(id) {
                     if(document.getElementById('lista-entregas').children.length === 0) {
                         document.getElementById('zona-entregas').style.display = 'none';
                     }
+                    cargarCuentasActivas();
                 }, 300);
             }
         });
 }
+
+// ==========================================
+//     GESTIÓN DE CUENTAS (MESAS ABIERTAS)
+// ==========================================
+function cargarCuentasActivas() {
+    fetch('/api/mesas/activas')
+        .then(r => r.json())
+        .then(cuentas => {
+            const zona = document.getElementById('zona-cuentas');
+            const contenedor = document.getElementById('lista-cuentas');
+            
+            if (!zona || !contenedor) return;
+
+            if (cuentas.length === 0) {
+                zona.style.display = 'none';
+                return;
+            }
+            
+            zona.style.display = 'block';
+            contenedor.innerHTML = cuentas.map(c => `
+                <div class="card-entrega" style="border-left-color: var(--primary);">
+                    <div style="font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 10px; font-size: 1.1em;">
+                        Mesa ${c.nombre}
+                    </div>
+                    <div style="color: var(--text-muted); font-size: 0.9em; margin-bottom: 15px;">
+                        ${c.items.length} productos en la cuenta
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong style="font-size:1.3em;">$${c.total}</strong>
+                        <button class="btn-primary" style="padding: 8px 12px; font-size: 0.9em;" onclick="cobrarMesa('${c.nombre}')">💳 COBRAR</button>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(err => console.error("Error cargando cuentas:", err));
+}
+
+function cobrarMesa(nombreMesa) {
+    if(!confirm(`¿Cerrar la cuenta de la Mesa ${nombreMesa} y registrar el cobro?`)) return;
+    
+    fetch(`/api/mesa/cobrar/${encodeURIComponent(nombreMesa)}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                cargarCuentasActivas();
+                alert(`✅ Mesa ${nombreMesa} cobrada correctamente.`);
+            }
+        });
+}
+
+// ==========================================
+//     WEBSOCKETS GLOBALES (ESCUCHADORES)
+// ==========================================
+
+socket.on('pedido-cocina', () => {
+    setTimeout(cargarCuentasActivas, 500); 
+});
+
+socket.on('stock-actualizado', () => {
+    fetch('/api/menu').then(r => r.json()).then(nuevoMenu => {
+        menuGlobal = nuevoMenu;
+        filtrarMenuPOS(); 
+    });
+});
 
 // Logout
 async function logout() {

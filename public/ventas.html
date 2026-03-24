@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#F26A36">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
     <title>Dashboard - Casa del Molino</title>
     <link rel="stylesheet" href="/css/dashboard.css">
@@ -58,8 +63,11 @@
     </div>
 
     <script>
-	const hora = new Date(p.fecha).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour:'2-digit', minute:'2-digit'});
-        document.getElementById('f-inicio').value = hoy; document.getElementById('f-fin').value = hoy;
+	//const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+	const hora = new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour:'2-digit', minute:'2-digit'});
+	const hoy = new Date().toISOString().split('T')[0];
+        document.getElementById('f-inicio').value = hoy; 
+        document.getElementById('f-fin').value = hoy;
 
         function cargarDashboard() {
     fetch('/api/reportes/dashboard')
@@ -111,7 +119,7 @@
             pedidos.forEach(p => {
                 const hora = new Date(p.fecha).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                 tbody.innerHTML += `<tr>
-                    <td><strong style="color:var(--primary)">#ORD${p.id}</strong></td>
+                    <td><strong style="color:var(--primary)">#ORD${p._id.substring(p._id.length - 5).toUpperCase()}</strong></td>
                     <td>${hora}</td>
                     <td>${p.cliente || 'Mesa ' + p.mesa}</td>
                     <td><span class="badge badge-success">Completado</span></td>
@@ -121,8 +129,18 @@
         })
         .catch(error => console.error("Error al buscar ventas:", error));
 }    
+
         async function logout() { await fetch('/api/logout', {method: 'POST'}); window.location.href = '/login.html'; }
         cargarDashboard(); buscarVentas();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA Lista!'))
+                    .catch(err => console.log('PWA Error:', err));
+            });
+        }
     </script>
 </body>
 </html>

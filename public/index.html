@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#F26A36">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pedidos (POS) - Casa del Molino</title>
     <link rel="stylesheet" href="/css/dashboard.css">
     
     <style>
         /* ESTILOS ESPECÍFICOS DEL POS Y MODAL */
         .pos-container { display: flex; gap: 20px; height: calc(100vh - 40px); }
-        .menu-area { flex: 2; overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 20px; }
+        .menu-area { flex: 2; overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 15px; }
         .cart-area { flex: 1; background: var(--surface); border-radius: var(--radius-card); padding: 20px; display: flex; flex-direction: column; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
         
         /* Zona Entregas */
@@ -18,32 +23,46 @@
         .grid-entregas { display: flex; gap: 10px; flex-wrap: wrap; }
         .card-entrega { background: white; padding: 15px; border-radius: 8px; border-left: 4px solid var(--success); width: 260px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         
-        /* Grilla Productos */
-        .grid-productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
-        .prod-card { background: var(--surface); padding: 20px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; transition: 0.2s; text-align: center; }
-        .prod-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow-sm); }
-        .prod-price { color: var(--primary); font-weight: 800; font-size: 1.2em; margin-top: 10px;}
+        /* Grilla Productos y Buscador */
+        .pos-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 5px; }
+        .search-pos { flex: 1; padding: 12px 15px 12px 40px; border-radius: 12px; border: 1px solid var(--border); font-size: 1rem; background: var(--surface) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="%238E8A86" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>') no-repeat 12px center; box-shadow: var(--shadow-sm);}
+        .search-pos:focus { border-color: var(--primary); outline: none; }
+
+        .grid-productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .prod-card { background: var(--surface); padding: 15px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; transition: 0.2s; text-align: center; display: flex; flex-direction: column; justify-content: center; min-height: 90px;}
+        .prod-card:active { transform: scale(0.95); }
+        .prod-card:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); }
+        .prod-price { color: var(--primary); font-weight: 800; font-size: 1.1em; margin-top: 5px;}
+
+        /* Paginación POS */
+        .pagination-pos { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 10px; padding-bottom: 10px; }
+        .btn-page-pos { background: var(--surface); border: 1px solid var(--border); padding: 10px 20px; border-radius: 8px; cursor: pointer; color: var(--text-main); font-weight: 800; font-size: 1rem;}
+        .btn-page-pos:hover:not(:disabled) { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+        .btn-page-pos:disabled { opacity: 0.4; cursor: not-allowed; }
 
         /* Elementos del Carrito */
         .cart-item { background: var(--bg-app); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border); }
         .cart-item-header { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 5px; }
         .detalles-item { font-size: 0.85em; color: var(--text-muted); }
-        .sin-ing { color: var(--danger); text-decoration: line-through; margin-right: 5px; }
-        .con-ing { color: var(--success); margin-right: 5px; }
+        .sin-ing { color: var(--danger); text-decoration: line-through; font-weight: 700; }
+        .con-ing { color: var(--success); font-weight: 700; }
         .btn-remove-item { color: var(--danger); cursor: pointer; font-size: 0.9em; font-weight: bold; }
 
-        /* Modal Editor (Adaptado al estilo moderno) */
+        /* Modal Editor */
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; backdrop-filter: blur(3px); }
         #editor-producto { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; background: var(--surface); border-radius: var(--radius-card); padding: 30px; z-index: 101; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
         .section-title { font-size: 0.85em; text-transform: uppercase; color: var(--text-muted); margin: 20px 0 10px 0; font-weight: 800; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); padding-bottom: 5px;}
         .ingrediente-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--bg-app); }
-        .tachado { text-decoration: line-through; color: #ccc; }
+        .tachado { text-decoration: line-through; opacity: 0.5; }
         .btn-action { padding: 6px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85em; }
         .btn-quitar { background: #ffebeb; color: var(--danger); }
         .btn-restaurar { background: #e6f9ed; color: var(--success); }
         .btn-add-extra { background: var(--bg-app); color: var(--primary); width: 100%; padding: 12px; margin-top: 10px; border: 1px dashed var(--primary); }
         
         .inputs-header { display: flex; gap: 10px; }
+        
+        /* Select de mesas más grande para dedos en tablet */
+        #mesa { font-size: 1rem; padding: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -68,22 +87,38 @@
                     <div id="lista-entregas" class="grid-entregas"></div>
                 </div>
 
-                <div class="card">
+                <div id="zona-cuentas" style="display: none; margin-bottom: 20px; background: #fff3e0; padding: 15px; border-radius: 12px; border: 1px solid var(--primary);">
+                    <div style="color: var(--primary); font-weight: 800; margin-bottom: 10px; font-size: 1.1em;">🧾 MESAS ABIERTAS (Cuentas)</div>
+                    <div id="lista-cuentas" class="grid-entregas"></div>
+                </div>
+
+                <div class="card" style="padding: 15px;">
                     <div class="inputs-header">
-                        <div style="flex: 0.3;">
+                        <div style="flex: 0.5;">
                             <label style="font-size: 0.85em; font-weight: bold; color: var(--text-muted);">Mesa</label>
-                            <input type="text" id="mesa" placeholder="N°">
+                            <select id="mesa">
+                                <option value="">Mostrador / Para llevar</option>
+                            </select>
                         </div>
                         <div style="flex: 1;">
-                            <label style="font-size: 0.85em; font-weight: bold; color: var(--text-muted);">Cliente</label>
-                            <input type="text" id="cliente" placeholder="Nombre del cliente">
+                            <label style="font-size: 0.85em; font-weight: bold; color: var(--text-muted);">Cliente (Opcional)</label>
+                            <input type="text" id="cliente" placeholder="Nombre">
                         </div>
                     </div>
                 </div>
 
-                <div>
-                    <h3 style="margin-top: 0; color: var(--text-main);">Menú</h3>
-                    <div id="lista-productos" class="grid-productos">Cargando menú...</div>
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <div class="pos-toolbar">
+                        <input type="text" id="buscador-pos" class="search-pos" placeholder="Buscar producto..." oninput="filtrarMenuPOS()">
+                    </div>
+                    
+                    <div id="lista-productos" class="grid-productos" style="flex: 1;">Cargando menú...</div>
+                    
+                    <div class="pagination-pos">
+                        <button class="btn-page-pos" id="btn-prev-pos" onclick="cambiarPaginaPOS(-1)">Anterior</button>
+                        <span id="page-info-pos" style="font-weight: 700; color: var(--text-muted);">1/1</span>
+                        <button class="btn-page-pos" id="btn-next-pos" onclick="cambiarPaginaPOS(1)">Siguiente</button>
+                    </div>
                 </div>
             </div>
 
@@ -98,7 +133,7 @@
                     <div style="display:flex; justify-content:space-between; font-size: 1.5em; font-weight: 800; margin-bottom: 15px;">
                         <span>Total</span> <span style="color: var(--primary)">$<span id="total-general">0</span></span>
                     </div>
-                    <button class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1em;" onclick="enviarPedido()">ENVIAR PEDIDO 🚀</button>
+                    <button class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.2rem;" onclick="enviarPedido()">ENVIAR PEDIDO 🚀</button>
                 </div>
             </div>
 
@@ -131,5 +166,15 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/pos.js"></script> </body>
+    <script src="/js/pos.js?v=6"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA Lista!'))
+                    .catch(err => console.log('PWA Error:', err));
+            });
+        }
+    </script>
+</body>
 </html>

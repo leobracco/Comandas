@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#F26A36">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Configuración (Admin) - Casa del Molino</title>
     <link rel="stylesheet" href="/css/dashboard.css">
     
     <style>
-        /* ESTILOS ESPECÍFICOS DE ADMIN */
         .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-        
         .form-row { display: flex; gap: 15px; margin-bottom: 15px; }
         .form-row > * { flex: 1; }
         .form-row input, .form-row select { margin: 0; }
@@ -17,18 +21,24 @@
         .btn-cancel { background: var(--border); color: var(--text-main); display: none; }
         .btn-cancel:hover { background: #e0d1c1; box-shadow: none; }
         
-        /* Acciones de tabla */
         .acciones-tabla { display: flex; gap: 10px; }
         .btn-edit { background: var(--bg-app); color: var(--text-main); padding: 6px 12px; font-size: 0.85em; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: 0.2s; }
         .btn-edit:hover { border-color: var(--primary); color: var(--primary); }
         .btn-delete { background: #ffebeb; color: var(--danger); padding: 6px 12px; font-size: 0.85em; border: 1px solid #ffcccb; border-radius: 6px; cursor: pointer; transition: 0.2s; }
         .btn-delete:hover { background: var(--danger); color: white; }
         
-        /* Área de Receta */
         .receta-area { background: var(--bg-app); padding: 20px; border-radius: 12px; margin-top: 25px; display: none; border: 1px dashed var(--primary); }
         .ing-list-item { background: var(--surface); padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border); box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-        .ing-list-item span { font-weight: 600; font-size: 0.9em; }
-        .ing-list-item small { color: var(--text-muted); font-weight: normal; }
+        
+        /* HERRAMIENTAS DE TABLA (Buscador y Paginación) */
+        .table-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 30px; gap: 10px;}
+        .search-input { flex: 1; padding: 8px 15px; border-radius: 20px; border: 1px solid var(--border); font-size: 0.9em; background: var(--bg-app) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%238E8A86" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>') no-repeat 10px center; padding-left: 35px;}
+        .search-input:focus { outline: none; border-color: var(--primary); background-color: var(--surface);}
+        
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 15px; font-size: 0.9em; color: var(--text-muted); font-weight: 700;}
+        .btn-page { background: var(--surface); border: 1px solid var(--border); padding: 5px 12px; border-radius: 6px; cursor: pointer; color: var(--text-main); font-weight: bold;}
+        .btn-page:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -47,72 +57,63 @@
         <div class="top-header">
             <div>
                 <h1>Configuración y Menú</h1>
-                <p>Gestiona tus ingredientes (insumos), productos y recetas.</p>
+                <p>Gestiona tus ingredientes (insumos), productos, recetas y mesas.</p>
             </div>
         </div>
 
         <div class="grid-container">
-            
             <div class="card">
                 <h3 class="card-title">1. Despensa (Insumos)</h3>
-                <p style="color: var(--text-muted); font-size: 0.85em; margin-top: -10px; margin-bottom: 20px;">
-                    Carga los ingredientes base o extras que usarás.
-                </p>
-                
                 <input type="hidden" id="ins-id">
                 
                 <div class="form-row">
-    <div style="flex: 2;">
-        <input type="text" id="ins-nombre" placeholder="Nombre (Ej: Jamón Crudo)">
-    </div>
-    <div style="flex: 1;">
-        <input type="number" id="ins-costo" placeholder="Costo ($)">
-    </div>
-</div>
-<div class="form-row" style="margin-top: -5px; margin-bottom: 15px;">
-    <label style="display:flex; align-items:center; gap:8px; font-size:0.9em; cursor:pointer;">
-        <input type="checkbox" id="ins-quitable" checked style="width:auto; margin:0;"> Se puede quitar
-    </label>
-    <label style="display:flex; align-items:center; gap:8px; font-size:0.9em; cursor:pointer;">
-        <input type="checkbox" id="ins-es-extra" checked style="width:auto; margin:0;"> Vender como Extra
-    </label>
-</div>
+                    <div style="flex: 2;"><input type="text" id="ins-nombre" placeholder="Nombre (Ej: Jamón Crudo)"></div>
+                    <div style="flex: 1;"><input type="number" id="ins-costo" placeholder="Costo ($)"></div>
+                </div>
+                
+                <div class="form-row" style="margin-top: -5px; margin-bottom: 15px;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:0.9em; cursor:pointer;">
+                        <input type="checkbox" id="ins-quitable" checked style="width:auto; margin:0;"> Se puede quitar
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:0.9em; cursor:pointer;">
+                        <input type="checkbox" id="ins-es-extra" checked style="width:auto; margin:0;"> Vender como Extra
+                    </label>
+                </div>
                 
                 <div class="btn-action-group">
                     <button class="btn-primary" onclick="guardarInsumo()" id="btn-ins-save" style="flex: 1;">AGREGAR INSUMO</button>
                     <button class="btn-primary btn-cancel" onclick="cancelarEdicion('ins')" id="btn-ins-cancel" style="flex: 1;">CANCELAR</button>
                 </div>
 
-                <div style="margin-top: 30px; overflow-x: auto;">
+                <div class="table-toolbar">
+                    <input type="text" id="search-insumo" class="search-input" placeholder="Buscar insumo..." oninput="filtrarInsumos()">
+                </div>
+
+                <div style="overflow-x: auto;">
                     <table id="tabla-insumos">
-                        <thead>
-                            <tr><th>Nombre</th><th>Costo</th><th>Acciones</th></tr>
-                        </thead>
+                        <thead><tr><th>Nombre</th><th>Costo</th><th>Acciones</th></tr></thead>
                         <tbody></tbody>
                     </table>
+                </div>
+                <div class="pagination">
+                    <button class="btn-page" id="btn-prev-ins" onclick="cambiarPagina('insumo', -1)">Anterior</button>
+                    <span id="page-info-ins">Pág 1 de 1</span>
+                    <button class="btn-page" id="btn-next-ins" onclick="cambiarPagina('insumo', 1)">Siguiente</button>
                 </div>
             </div>
 
             <div class="card">
                 <h3 class="card-title">2. Menú y Recetas</h3>
-                <p style="color: var(--text-muted); font-size: 0.85em; margin-top: -10px; margin-bottom: 20px;">
-                    Crea los productos finales y asígnales sus insumos.
-                </p>
-
                 <input type="hidden" id="prod-id">
 
-                <div style="margin-bottom: 15px;">
-                    <input type="text" id="prod-nombre" placeholder="Nombre del Producto">
-                </div>
+                <div style="margin-bottom: 15px;"><input type="text" id="prod-nombre" placeholder="Nombre del Producto"></div>
                 
                 <div class="form-row">
-                    <div>
-                        <input type="number" id="prod-markup" placeholder="Markup %" value="40" title="Porcentaje de ganancia deseado">
-                    </div>
+                    <div><input type="number" id="prod-markup" placeholder="Markup %" value="40" title="Ganancia"></div>
                     <div>
                         <select id="prod-cocina">
                             <option value="1">Va a Cocina</option>
-                            <option value="0">Solo Barra/Mostrador</option>
+                            <option value="0">Solo Barra</option>
                         </select>
                     </div>
                 </div>
@@ -123,141 +124,267 @@
                 </div>
 
                 <div id="area-receta" class="receta-area">
-                    <h4 style="margin-top: 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                        <span>📝</span> Receta: <span id="receta-prod-name" style="color: var(--primary);"></span>
-                    </h4>
-                    
+                    <h4 style="margin-top: 0; display: flex; align-items: center; gap: 8px;"><span>📝</span> Receta: <span id="receta-prod-name" style="color: var(--primary);"></span></h4>
                     <div id="lista-ingredientes-actuales" style="margin: 15px 0;">Cargando...</div>
-                    
                     <div class="form-row" style="margin-top: 20px; margin-bottom: 0; border-top: 1px solid var(--border); padding-top: 20px;">
-                        <div style="flex: 2;">
-                            <select id="select-insumos-add"></select>
-                        </div>
-                        <div style="flex: 1;">
-                            <button class="btn-primary" onclick="agregarIngrediente()" style="width: 100%;">+ Añadir</button>
-                        </div>
+                        <div style="flex: 2;"><select id="select-insumos-add"></select></div>
+                        <div style="flex: 1;"><button class="btn-primary" onclick="agregarIngrediente()" style="width: 100%;">+ Añadir</button></div>
                     </div>
                 </div>
 
-                <div style="margin-top: 30px; overflow-x: auto;">
+                <div class="table-toolbar">
+                    <input type="text" id="search-producto" class="search-input" placeholder="Buscar producto..." oninput="filtrarProductos()">
+                </div>
+
+                <div style="overflow-x: auto;">
                     <table id="tabla-productos">
-                        <thead>
-                            <tr><th>Producto</th><th>Costo Base</th><th>Acciones</th></tr>
-                        </thead>
+                        <thead><tr><th>Producto</th><th>Costo Base</th><th>Acciones</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button class="btn-page" id="btn-prev-prod" onclick="cambiarPagina('producto', -1)">Anterior</button>
+                    <span id="page-info-prod">Pág 1 de 1</span>
+                    <button class="btn-page" id="btn-next-prod" onclick="cambiarPagina('producto', 1)">Siguiente</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title">3. Salón (Mesas)</h3>
+                <input type="hidden" id="mesa-id">
+                
+                <div class="form-row">
+                    <div style="flex: 1;"><input type="text" id="mesa-nombre" placeholder="Nombre/Número (Ej: Mesa 1 o Barra)"></div>
+                </div>
+                
+                <div class="btn-action-group">
+                    <button class="btn-primary" onclick="guardarMesa()" id="btn-mesa-save" style="flex: 1;">AGREGAR MESA</button>
+                    <button class="btn-primary btn-cancel" onclick="cancelarEdicion('mesa')" id="btn-mesa-cancel" style="flex: 1;">CANCELAR</button>
+                </div>
+
+                <div style="overflow-x: auto; margin-top: 20px;">
+                    <table id="tabla-mesas">
+                        <thead><tr><th>Mesa</th><th>Estado</th><th>Acciones</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
             </div>
-            
+
         </div>
     </div>
 
     <script>
-        // Lógica de Logout
-        async function logout() {
-            await fetch('/api/logout', { method: 'POST' });
-            window.location.href = '/login.html';
-        }
+        async function logout() { await fetch('/api/logout', { method: 'POST' }); window.location.href = '/login.html'; }
 
+        // --- ESTADO GLOBAL Y PAGINACIÓN ---
         let insumosGlobal = [];
+        let insumosFiltrados = [];
+        let pagInsumo = 1;
+
+        let productosGlobal = [];
+        let productosFiltrados = [];
+        let pagProducto = 1;
+
+        let mesasGlobal = []; // Añadido para las mesas
+
+        const ITEMS_POR_PAGINA = 8; // Ajusta este número si quieres ver más o menos filas
 
         async function cargarTodo() {
-            const [resMenu, resIns] = await Promise.all([fetch('/api/menu'), fetch('/api/insumos')]);
-            if(resMenu.status === 401) return window.location.href = '/login.html'; // Redirigir si expiró token
+            const [resMenu, resIns, resMesas] = await Promise.all([
+                fetch('/api/menu'), 
+                fetch('/api/insumos'),
+                fetch('/api/mesas')
+            ]);
+            
+            if(resMenu.status === 401) return window.location.href = '/login.html'; 
 
-            const menu = await resMenu.json();
+            productosGlobal = await resMenu.json();
             insumosGlobal = await resIns.json();
+            mesasGlobal = await resMesas.json();
 
-            // Render Insumos
-            document.querySelector('#tabla-insumos tbody').innerHTML = insumosGlobal.map(i => `
+            // Inicializamos los arrays filtrados con todos los datos
+            insumosFiltrados = [...insumosGlobal];
+            productosFiltrados = [...productosGlobal];
+
+            // Renderizamos listas y select
+            renderTablaInsumos();
+            renderTablaProductos();
+            renderTablaMesas();
+            
+            document.getElementById('select-insumos-add').innerHTML = insumosGlobal.map(i => `<option value="${i.id}">${i.nombre} ($${i.costo})</option>`).join('');
+        }
+        cargarTodo();
+
+        // --- LÓGICA DE MESAS ---
+        function renderTablaMesas() {
+            document.querySelector('#tabla-mesas tbody').innerHTML = mesasGlobal.map(m => `
+                <tr>
+                    <td><strong>${m.nombre}</strong></td>
+                    <td>
+                        <span class="badge ${m.estado === 'libre' ? 'badge-success' : ''}" style="${m.estado === 'ocupada' ? 'background: #ffebeb; color: var(--danger);' : ''}">
+                            ${m.estado.toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="acciones-tabla">
+                        <button class="btn-edit" onclick="editarMesa('${m.id}', '${m.nombre}')">✏️</button>
+                        <button class="btn-delete" onclick="eliminarMesa('${m.id}', '${m.nombre}')">X</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function editarMesa(id, nombre) {
+            document.getElementById('mesa-id').value = id;
+            document.getElementById('mesa-nombre').value = nombre;
+            toggleModoEdicion('mesa', true);
+        }
+
+        async function guardarMesa() {
+            const id = document.getElementById('mesa-id').value;
+            const nombre = document.getElementById('mesa-nombre').value.trim();
+            
+            if(!nombre) return alert("Falta el nombre de la mesa.");
+
+            const url = id ? `/api/admin/mesa/${id}` : '/api/admin/mesa';
+            const method = id ? 'PUT' : 'POST';
+
+            await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ nombre }) });
+            toggleModoEdicion('mesa', false);
+            cargarTodo();
+        }
+
+        async function eliminarMesa(id, nombre) {
+            if(!confirm(`¿Eliminar la mesa "${nombre}"?`)) return;
+            const res = await fetch(`/api/admin/mesa/${id}`, { method: 'DELETE' });
+            if(res.status === 400) {
+                const data = await res.json();
+                return alert(data.error);
+            }
+            cargarTodo();
+        }
+
+        // --- LÓGICA DE BÚSQUEDA Y RENDERIZADO: INSUMOS ---
+        function filtrarInsumos() {
+            const txt = document.getElementById('search-insumo').value.toLowerCase();
+            insumosFiltrados = insumosGlobal.filter(i => i.nombre.toLowerCase().includes(txt));
+            pagInsumo = 1; // Volver a la página 1 al buscar
+            renderTablaInsumos();
+        }
+
+        function renderTablaInsumos() {
+            const totalPaginas = Math.ceil(insumosFiltrados.length / ITEMS_POR_PAGINA) || 1;
+            const inicio = (pagInsumo - 1) * ITEMS_POR_PAGINA;
+            const fin = inicio + ITEMS_POR_PAGINA;
+            const recortes = insumosFiltrados.slice(inicio, fin);
+
+            document.querySelector('#tabla-insumos tbody').innerHTML = recortes.map(i => `
                 <tr>
                     <td>${i.nombre}</td>
                     <td>$${i.costo}</td>
                     <td class="acciones-tabla">
-                        <button class="btn-edit" onclick="editarInsumo(${i.id}, '${i.nombre}', ${i.costo})">✏️</button>
-                        <button class="btn-delete" onclick="eliminarInsumo(${i.id}, '${i.nombre}')">X</button>
+                        <button class="btn-edit" onclick="editarInsumo('${i.id}', '${i.nombre}', ${i.costo}, ${i.quitable}, ${i.es_extra})">✏️</button>
+                        <button class="btn-delete" onclick="eliminarInsumo('${i.id}', '${i.nombre}')">X</button>
                     </td>
                 </tr>
             `).join('');
 
-            // Render Productos
-            document.querySelector('#tabla-productos tbody').innerHTML = menu.map(p => `
+            document.getElementById('page-info-ins').innerText = `Pág ${pagInsumo} de ${totalPaginas}`;
+            document.getElementById('btn-prev-ins').disabled = pagInsumo === 1;
+            document.getElementById('btn-next-ins').disabled = pagInsumo === totalPaginas;
+        }
+
+        // --- LÓGICA DE BÚSQUEDA Y RENDERIZADO: PRODUCTOS ---
+        function filtrarProductos() {
+            const txt = document.getElementById('search-producto').value.toLowerCase();
+            productosFiltrados = productosGlobal.filter(p => p.nombre.toLowerCase().includes(txt));
+            pagProducto = 1;
+            renderTablaProductos();
+        }
+
+        function renderTablaProductos() {
+            const totalPaginas = Math.ceil(productosFiltrados.length / ITEMS_POR_PAGINA) || 1;
+            const inicio = (pagProducto - 1) * ITEMS_POR_PAGINA;
+            const fin = inicio + ITEMS_POR_PAGINA;
+            const recortes = productosFiltrados.slice(inicio, fin);
+
+            document.querySelector('#tabla-productos tbody').innerHTML = recortes.map(p => `
                 <tr>
                     <td><strong style="color: var(--text-main);">${p.nombre}</strong></td>
                     <td>$${p.costo_total || 0}</td>
                     <td class="acciones-tabla">
-                        <button class="btn-edit" onclick="editarProducto(${p.id}, '${p.nombre}', ${p.markup}, ${p.es_cocina})">Receta</button>
-                        <button class="btn-delete" onclick="eliminarProducto(${p.id}, '${p.nombre}')">X</button>
+                        <button class="btn-edit" onclick="editarProducto('${p.id}', '${p.nombre}', ${p.markup}, ${p.es_cocina})">Receta</button>
+                        <button class="btn-delete" onclick="eliminarProducto('${p.id}', '${p.nombre}')">X</button>
                     </td>
                 </tr>
             `).join('');
 
-            // Llenar select para recetas
-            document.getElementById('select-insumos-add').innerHTML = insumosGlobal.map(i => 
-                `<option value="${i.id}">${i.nombre} ($${i.costo})</option>`
-            ).join('');
+            document.getElementById('page-info-prod').innerText = `Pág ${pagProducto} de ${totalPaginas}`;
+            document.getElementById('btn-prev-prod').disabled = pagProducto === 1;
+            document.getElementById('btn-next-prod').disabled = pagProducto === totalPaginas;
         }
-        cargarTodo();
 
-        // --- ELIMINAR ---
+        // --- CAMBIO DE PÁGINA COMÚN ---
+        function cambiarPagina(tipo, delta) {
+            if (tipo === 'insumo') {
+                pagInsumo += delta;
+                renderTablaInsumos();
+            } else {
+                pagProducto += delta;
+                renderTablaProductos();
+            }
+        }
+
+        // --- ABM ---
         async function eliminarInsumo(id, nombre) {
-            if(!confirm(`¿Estás seguro de eliminar "${nombre}"?\nSe quitará de todas las recetas que lo usen.`)) return;
+            if(!confirm(`¿Eliminar "${nombre}"? Se quitará de las recetas que lo usen.`)) return;
             await fetch(`/api/admin/insumo/${id}`, { method: 'DELETE' });
             cargarTodo();
         }
 
         async function eliminarProducto(id, nombre) {
-            if(!confirm(`¿Estás seguro de eliminar permanentemente el producto "${nombre}"?`)) return;
+            if(!confirm(`¿Eliminar permanentemente el producto "${nombre}"?`)) return;
             await fetch(`/api/admin/producto/${id}`, { method: 'DELETE' });
+            if(document.getElementById('prod-id').value === id) cancelarEdicion('prod');
             cargarTodo();
-            // Si estaba editando este mismo producto, cierro la vista de receta
-            if(document.getElementById('prod-id').value == id) {
-                cancelarEdicion('prod');
-            }
         }
 
-        // --- EDICIÓN Y GUARDADO: INSUMOS ---
         function editarInsumo(id, nombre, costo, quitable, es_extra) {
-    document.getElementById('ins-id').value = id;
-    document.getElementById('ins-nombre').value = nombre;
-    document.getElementById('ins-costo').value = costo;
-    document.getElementById('ins-quitable').checked = quitable === 1;
-    document.getElementById('ins-es-extra').checked = es_extra === 1;
-    toggleModoEdicion('ins', true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+            document.getElementById('ins-id').value = id;
+            document.getElementById('ins-nombre').value = nombre;
+            document.getElementById('ins-costo').value = costo;
+            document.getElementById('ins-quitable').checked = quitable === 1;
+            document.getElementById('ins-es-extra').checked = es_extra === 1;
+            toggleModoEdicion('ins', true);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
-async function guardarInsumo() {
-    const id = document.getElementById('ins-id').value;
-    const nombre = document.getElementById('ins-nombre').value.trim();
-    const costo = document.getElementById('ins-costo').value;
-    const quitable = document.getElementById('ins-quitable').checked;
-    const es_extra = document.getElementById('ins-es-extra').checked;
-    
-    if(!nombre || !costo) return alert("Falta nombre o costo.");
+        async function guardarInsumo() {
+            const id = document.getElementById('ins-id').value;
+            const nombre = document.getElementById('ins-nombre').value.trim();
+            const costo = document.getElementById('ins-costo').value;
+            const quitable = document.getElementById('ins-quitable').checked;
+            const es_extra = document.getElementById('ins-es-extra').checked;
+            
+            if(!nombre || !costo) return alert("Falta nombre o costo.");
 
-    const url = id ? `/api/admin/insumo/${id}` : '/api/admin/insumo';
-    const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/admin/insumo/${id}` : '/api/admin/insumo';
+            const method = id ? 'PUT' : 'POST';
 
-    await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ nombre, costo, quitable, es_extra }) });
-    toggleModoEdicion('ins', false);
-    cargarTodo();
-}
+            await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ nombre, costo, quitable, es_extra }) });
+            toggleModoEdicion('ins', false);
+            document.getElementById('search-insumo').value = ''; 
+            cargarTodo();
+        }
 
-        // --- EDICIÓN Y GUARDADO: PRODUCTOS ---
         function editarProducto(id, nombre, markup, es_cocina) {
             document.getElementById('prod-id').value = id;
             document.getElementById('prod-nombre').value = nombre;
             document.getElementById('prod-markup').value = markup;
             document.getElementById('prod-cocina').value = es_cocina;
-            
             toggleModoEdicion('prod', true);
-            
             document.getElementById('area-receta').style.display = 'block';
             document.getElementById('receta-prod-name').innerText = nombre;
             cargarRecetaDelProducto(id);
-            
-            // Hacer scroll hacia el área de receta
             document.getElementById('prod-nombre').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
@@ -267,33 +394,28 @@ async function guardarInsumo() {
             const markup = document.getElementById('prod-markup').value;
             const es_cocina = document.getElementById('prod-cocina').value;
             
-            if(!nombre) {
-                alert("Por favor, ingresa el nombre del producto.");
-                document.getElementById('prod-nombre').focus();
-                return;
-            }
+            if(!nombre) return alert("Ingresa el nombre del producto.");
 
             const url = id ? `/api/admin/producto/${id}` : '/api/admin/producto';
             const method = id ? 'PUT' : 'POST';
 
             await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ nombre, markup, es_cocina }) });
             toggleModoEdicion('prod', false);
+            document.getElementById('search-producto').value = ''; 
             cargarTodo();
         }
 
-        // --- GESTIÓN DE RECETAS ---
         async function cargarRecetaDelProducto(prodId) {
             const res = await fetch(`/api/admin/receta/${prodId}`);
             const ingredientes = await res.json();
             const div = document.getElementById('lista-ingredientes-actuales');
-            
             if(ingredientes.length === 0) {
                 div.innerHTML = "<div style='color: var(--text-muted); font-style: italic; padding: 10px 0;'>No tiene ingredientes asignados aún.</div>";
             } else {
                 div.innerHTML = ingredientes.map(r => `
                     <div class="ing-list-item">
                         <span>${r.nombre} <small>($${r.costo})</small></span>
-                        <button class="btn-delete" onclick="borrarIngrediente(${r.producto_id}, ${r.insumo_id})">Quitar</button>
+                        <button class="btn-delete" onclick="borrarIngrediente('${r.producto_id}', '${r.insumo_id}')">Quitar</button>
                     </div>
                 `).join('');
             }
@@ -302,16 +424,10 @@ async function guardarInsumo() {
         async function agregarIngrediente() {
             const prodId = document.getElementById('prod-id').value;
             const insumoId = document.getElementById('select-insumos-add').value;
-            
-            if(!insumoId) return alert("Por favor, crea un insumo primero.");
-
-            await fetch('/api/admin/receta', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ producto_id: prodId, insumo_id: insumoId })
-            });
+            if(!insumoId) return alert("Crea un insumo primero.");
+            await fetch('/api/admin/receta', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ producto_id: prodId, insumo_id: insumoId }) });
             cargarRecetaDelProducto(prodId);
-            cargarTodo(); // Para actualizar los costos en la tabla de productos
+            cargarTodo(); 
         }
 
         async function borrarIngrediente(prodId, insumoId) {
@@ -320,43 +436,47 @@ async function guardarInsumo() {
             cargarTodo();
         }
 
-        // --- UTILIDADES UI ---
         function toggleModoEdicion(tipo, activado) {
             const btnSave = document.getElementById(`btn-${tipo}-save`);
             const btnCancel = document.getElementById(`btn-${tipo}-cancel`);
             
             if(activado) {
-                btnSave.innerText = "ACTUALIZAR";
-                // Color primario pero invertido (Outline)
-                btnSave.style.background = "var(--bg-app)";
-                btnSave.style.color = "var(--primary)";
-                btnSave.style.border = "2px solid var(--primary)";
+                btnSave.innerText = "ACTUALIZAR"; 
+                btnSave.style.background = "var(--bg-app)"; 
+                btnSave.style.color = "var(--primary)"; 
+                btnSave.style.border = "2px solid var(--primary)"; 
                 btnCancel.style.display = "block";
             } else {
-                document.getElementById(`${tipo}-id`).value = "";
-                document.getElementById(`${tipo}-nombre`).value = "";
+                document.getElementById(`${tipo}-id`).value = ""; 
                 
-                if(tipo==='ins') {
+                if(tipo === 'ins') {
+                    document.getElementById('ins-nombre').value = "";
                     document.getElementById('ins-costo').value = "";
-                }
-                
-                if(tipo==='prod') {
-                    document.getElementById('area-receta').style.display = 'none';
-                    document.getElementById('prod-markup').value = "40";
+                } else if(tipo === 'prod') {
+                    document.getElementById('prod-nombre').value = "";
+                    document.getElementById('area-receta').style.display = 'none'; 
+                    document.getElementById('prod-markup').value = "40"; 
                     document.getElementById('prod-cocina').value = "1";
+                } else if (tipo === 'mesa') {
+                    document.getElementById('mesa-nombre').value = "";
                 }
                 
-                btnSave.innerText = tipo === 'ins' ? "AGREGAR INSUMO" : "CREAR PRODUCTO";
-                // Restaurar color primario normal
-                btnSave.style.background = "var(--primary)";
-                btnSave.style.color = "white";
-                btnSave.style.border = "none";
+                btnSave.innerText = tipo === 'ins' ? "AGREGAR INSUMO" : (tipo === 'prod' ? "CREAR PRODUCTO" : "AGREGAR MESA"); 
+                btnSave.style.background = "var(--primary)"; 
+                btnSave.style.color = "white"; 
+                btnSave.style.border = "none"; 
                 btnCancel.style.display = "none";
             }
         }
-        
-        function cancelarEdicion(tipo) { 
-            toggleModoEdicion(tipo, false); 
+        function cancelarEdicion(tipo) { toggleModoEdicion(tipo, false); }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA Lista!'))
+                    .catch(err => console.log('PWA Error:', err));
+            });
         }
     </script>
 </body>
